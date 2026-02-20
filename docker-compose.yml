@@ -1,0 +1,43 @@
+services:
+  tracking-server:
+    image: tracking-server:latest
+    container_name: tracking-server
+    restart: unless-stopped
+    ports:
+      - "8091:8091"
+    volumes:
+      - ./configs/config.toml:/app/configs/config.toml:ro
+      - tracking-data:/app/data
+      - tracking-keys:/app/keys
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: tracking-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pacman
+      POSTGRES_PASSWORD: MEB3oZZkpxgA1q4WcA10
+      POSTGRES_DB: tracking
+    ports:
+      - "18432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: tracking-redis
+    restart: unless-stopped
+    command: redis-server --requirepass 797Qa8fLHwv38
+    ports:
+      - "8879:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  pg-data:
+  redis-data:
+  tracking-data:
+  tracking-keys:
