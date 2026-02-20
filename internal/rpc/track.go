@@ -13,7 +13,6 @@ import (
 	"github.com/tracking/analysis/internal/middleware"
 	"github.com/tracking/analysis/internal/models"
 	"github.com/tracking/analysis/internal/repo"
-	"github.com/tracking/analysis/internal/security"
 )
 
 type TrackHandlers struct {
@@ -23,6 +22,7 @@ type TrackHandlers struct {
 	ClickRepo *repo.ClickRepo
 	EventRepo *repo.EventRepo
 	SiteRepo  *repo.SiteRepo
+	TokenRepo *repo.TokenRepo
 }
 
 // track.collectClick
@@ -63,12 +63,9 @@ func (h *TrackHandlers) CollectClick(ctx context.Context, params json.RawMessage
 		return nil, NewRPCError(ErrCodeInvalidParams, "invalid decrypted payload")
 	}
 
-	// Verify HMAC token
-	tokenPayload, err := security.VerifyToken(payload.Token, h.Config.SecurityConfiguration.TokenSecret)
+	// Look up token by short code
+	tkn, err := h.TokenRepo.GetByShortCode(payload.Token)
 	if err != nil {
-		if err.Error() == "token expired" {
-			return nil, NewRPCError(ErrCodeExpiredToken, nil)
-		}
 		return nil, NewRPCError(ErrCodeInvalidToken, nil)
 	}
 
@@ -81,17 +78,17 @@ func (h *TrackHandlers) CollectClick(ctx context.Context, params json.RawMessage
 	}
 
 	// Dedup check
-	if dedup.CheckClickDedup(ctx, h.Redis, &h.Config.SecurityConfiguration, tokenPayload.TrackerID, tokenPayload.ChannelID, payload.VisitorID) {
+	if dedup.CheckClickDedup(ctx, h.Redis, &h.Config.SecurityConfiguration, tkn.TrackerID, tkn.ChannelID, payload.VisitorID) {
 		return map[string]any{"target_url": "", "click_id": "", "dedup": true}, nil
 	}
 
 	// Write click
 	click := &models.Click{
 		TS:           time.Now(),
-		TrackerID:    tokenPayload.TrackerID,
-		CampaignID:   tokenPayload.CampaignID,
-		ChannelID:    tokenPayload.ChannelID,
-		TargetID:     tokenPayload.TargetID,
+		TrackerID:    tkn.TrackerID,
+		CampaignID:   tkn.CampaignID,
+		ChannelID:    tkn.ChannelID,
+		TargetID:     tkn.TargetID,
 		VisitorID:    payload.VisitorID,
 		IP:           ip,
 		UA:           ua,
@@ -105,7 +102,7 @@ func (h *TrackHandlers) CollectClick(ctx context.Context, params json.RawMessage
 		return nil, NewRPCError(ErrCodeDBError, nil)
 	}
 
-	return map[string]any{"click_id": click.ID, "target_id": tokenPayload.TargetID}, nil
+	return map[string]any{"click_id": click.ID, "target_id": tkn.TargetID}, nil
 }
 
 // track.collectEvents

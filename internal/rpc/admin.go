@@ -7,21 +7,27 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
+	"math"
 	"time"
 
 	"github.com/tracking/analysis/internal/config"
 	"github.com/tracking/analysis/internal/models"
 	"github.com/tracking/analysis/internal/repo"
 	"github.com/tracking/analysis/internal/security"
+	"gorm.io/gorm"
 )
 
 type AdminHandlers struct {
-	Config      *config.Config
-	TrackerRepo *repo.TrackerRepo
+	Config       *config.Config
+	TrackerRepo  *repo.TrackerRepo
 	CampaignRepo *repo.CampaignRepo
-	ChannelRepo *repo.ChannelRepo
-	TargetRepo  *repo.TargetRepo
-	SiteRepo    *repo.SiteRepo
+	ChannelRepo  *repo.ChannelRepo
+	TargetRepo   *repo.TargetRepo
+	SiteRepo     *repo.SiteRepo
+	TokenRepo    *repo.TokenRepo
+	ClickRepo    *repo.ClickRepo
+	EventRepo    *repo.EventRepo
 }
 
 // Session token generation using HMAC
@@ -65,6 +71,10 @@ func (h *AdminHandlers) Register(d *Dispatcher) {
 	d.Register("admin.site.create", h.SiteCreate)
 	d.Register("admin.site.list", h.SiteList)
 	d.Register("admin.token.generate", h.TokenGenerate)
+	d.Register("admin.token.list", h.TokenList)
+	d.Register("admin.token.delete", h.TokenDelete)
+	d.Register("admin.stats.clicks", h.StatsClicks)
+	d.Register("admin.stats.events", h.StatsEvents)
 }
 
 // admin.login
@@ -92,7 +102,6 @@ func (h *AdminHandlers) TrackerCreate(_ context.Context, params json.RawMessage)
 		AdminToken string `json:"admin_token"`
 		Name       string `json:"name"`
 		Type       string `json:"type"`
-		Mode       string `json:"mode"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, NewRPCError(ErrCodeInvalidParams, err.Error())
@@ -100,13 +109,9 @@ func (h *AdminHandlers) TrackerCreate(_ context.Context, params json.RawMessage)
 	if p.Type != "ad" && p.Type != "web" {
 		return nil, NewRPCErrorWithMessage(ErrCodeInvalidParams, "type must be 'ad' or 'web'")
 	}
-	if p.Mode == "" {
-		p.Mode = "302"
-	}
 	tracker := &models.Tracker{
 		Name:   p.Name,
 		Type:   p.Type,
-		Mode:   p.Mode,
 		Status: "active",
 	}
 	if err := h.TrackerRepo.Create(tracker); err != nil {
@@ -141,7 +146,6 @@ func (h *AdminHandlers) TrackerUpdate(_ context.Context, params json.RawMessage)
 		ID         string `json:"id"`
 		Name       string `json:"name"`
 		Status     string `json:"status"`
-		Mode       string `json:"mode"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, NewRPCError(ErrCodeInvalidParams, err.Error())
@@ -155,9 +159,6 @@ func (h *AdminHandlers) TrackerUpdate(_ context.Context, params json.RawMessage)
 	}
 	if p.Status != "" {
 		tracker.Status = p.Status
-	}
-	if p.Mode != "" {
-		tracker.Mode = p.Mode
 	}
 	if err := h.TrackerRepo.Update(tracker); err != nil {
 		return nil, NewRPCError(ErrCodeDBError, err.Error())
@@ -370,7 +371,7 @@ func (h *AdminHandlers) SiteList(_ context.Context, params json.RawMessage) (any
 	return sites, nil
 }
 
-// admin.token.generate — generates an HMAC tracking token
+// admin.token.generate — generates a short-code tracking token stored in DB
 func (h *AdminHandlers) TokenGenerate(_ context.Context, params json.RawMessage) (any, *RPCError) {
 	if err := h.requireAuth(params); err != nil {
 		return nil, err
@@ -382,28 +383,312 @@ func (h *AdminHandlers) TokenGenerate(_ context.Context, params json.RawMessage)
 		ChannelID  string `json:"channel_id"`
 		TargetID   string `json:"target_id"`
 		Mode       string `json:"mode"`
-		ExpSeconds int64  `json:"exp_seconds"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, NewRPCError(ErrCodeInvalidParams, err.Error())
 	}
-
-	var exp int64
-	if p.ExpSeconds > 0 {
-		exp = time.Now().Unix() + p.ExpSeconds
+	if p.Mode == "" {
+		p.Mode = "302"
 	}
 
-	payload := security.TokenPayload{
+	// Generate unique short code with collision retry
+	var shortCode string
+	for i := 0; i < 10; i++ {
+		candidate := security.GenerateShortCode()
+		exists, err := h.TokenRepo.ExistsByShortCode(candidate)
+		if err != nil {
+			return nil, NewRPCError(ErrCodeDBError, err.Error())
+		}
+		if !exists {
+			shortCode = candidate
+			break
+		}
+	}
+	if shortCode == "" {
+		return nil, NewRPCErrorWithMessage(ErrCodeInternalError, "failed to generate unique short code")
+	}
+
+	token := &models.Token{
+		ShortCode:  shortCode,
 		TrackerID:  p.TrackerID,
 		CampaignID: p.CampaignID,
 		ChannelID:  p.ChannelID,
 		TargetID:   p.TargetID,
-		Exp:        exp,
 		Mode:       p.Mode,
 	}
-	token, err := security.GenerateToken(payload, h.Config.SecurityConfiguration.TokenSecret)
-	if err != nil {
-		return nil, NewRPCError(ErrCodeInternalError, err.Error())
+	if err := h.TokenRepo.Create(token); err != nil {
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
 	}
-	return map[string]string{"token": token}, nil
+
+	prefix := "r"
+	if token.Mode == "js" {
+		prefix = "t"
+	}
+	trackingURL := fmt.Sprintf("%s/%s/%s", h.Config.ServiceConfiguration.ExportURL, prefix, token.ShortCode)
+
+	return map[string]any{
+		"id":           token.ID,
+		"short_code":   token.ShortCode,
+		"tracker_id":   token.TrackerID,
+		"campaign_id":  token.CampaignID,
+		"channel_id":   token.ChannelID,
+		"target_id":    token.TargetID,
+		"mode":         token.Mode,
+		"created_at":   token.CreatedAt,
+		"tracking_url": trackingURL,
+	}, nil
+}
+
+// admin.token.list
+func (h *AdminHandlers) TokenList(_ context.Context, params json.RawMessage) (any, *RPCError) {
+	if err := h.requireAuth(params); err != nil {
+		return nil, err
+	}
+	var p struct {
+		TrackerID string `json:"tracker_id"`
+	}
+	json.Unmarshal(params, &p)
+	tokens, err := h.TokenRepo.List(p.TrackerID)
+	if err != nil {
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
+	}
+
+	results := make([]map[string]any, len(tokens))
+	for i, t := range tokens {
+		prefix := "r"
+		if t.Mode == "js" {
+			prefix = "t"
+		}
+		results[i] = map[string]any{
+			"id":           t.ID,
+			"short_code":   t.ShortCode,
+			"tracker_id":   t.TrackerID,
+			"campaign_id":  t.CampaignID,
+			"channel_id":   t.ChannelID,
+			"target_id":    t.TargetID,
+			"mode":         t.Mode,
+			"created_at":   t.CreatedAt,
+			"tracking_url": fmt.Sprintf("%s/%s/%s", h.Config.ServiceConfiguration.ExportURL, prefix, t.ShortCode),
+		}
+	}
+	return results, nil
+}
+
+// admin.token.delete
+func (h *AdminHandlers) TokenDelete(_ context.Context, params json.RawMessage) (any, *RPCError) {
+	if err := h.requireAuth(params); err != nil {
+		return nil, err
+	}
+	var p struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, NewRPCError(ErrCodeInvalidParams, err.Error())
+	}
+	if err := h.TokenRepo.Delete(p.ID); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, NewRPCErrorWithMessage(ErrCodeInvalidParams, "token not found")
+		}
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
+	}
+	return map[string]bool{"ok": true}, nil
+}
+
+func safeDivide(numerator, denominator int64) float64 {
+	if denominator == 0 {
+		return 0
+	}
+	return math.Round(float64(numerator)/float64(denominator)*10000) / 100
+}
+
+// admin.stats.clicks
+func (h *AdminHandlers) StatsClicks(_ context.Context, params json.RawMessage) (any, *RPCError) {
+	if err := h.requireAuth(params); err != nil {
+		return nil, err
+	}
+	var p struct {
+		StartDate  string `json:"start_date"`
+		EndDate    string `json:"end_date"`
+		TrackerID  string `json:"tracker_id"`
+		CampaignID string `json:"campaign_id"`
+		ChannelID  string `json:"channel_id"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, NewRPCError(ErrCodeInvalidParams, err.Error())
+	}
+	start, err := time.Parse("2006-01-02", p.StartDate)
+	if err != nil {
+		return nil, NewRPCErrorWithMessage(ErrCodeInvalidParams, "invalid start_date, expected YYYY-MM-DD")
+	}
+	end, err := time.Parse("2006-01-02", p.EndDate)
+	if err != nil {
+		return nil, NewRPCErrorWithMessage(ErrCodeInvalidParams, "invalid end_date, expected YYYY-MM-DD")
+	}
+	end = end.Add(24*time.Hour - time.Nanosecond)
+
+	daily, err := h.ClickRepo.CountByDay(start, end, p.TrackerID, p.CampaignID, p.ChannelID)
+	if err != nil {
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
+	}
+	total, uniqueVisitors, bots, err := h.ClickRepo.Summary(start, end, p.TrackerID, p.CampaignID, p.ChannelID)
+	if err != nil {
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
+	}
+	topTrackers, err := h.ClickRepo.TopByGroup(start, end, "tracker_id", 10)
+	if err != nil {
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
+	}
+	topChannels, err := h.ClickRepo.TopByGroup(start, end, "channel_id", 10)
+	if err != nil {
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
+	}
+	topCampaigns, err := h.ClickRepo.TopByGroup(start, end, "campaign_id", 10)
+	if err != nil {
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
+	}
+
+	// New aggregations — graceful on failure
+	topReferrers, err := h.ClickRepo.TopReferrers(start, end, p.TrackerID, p.CampaignID, p.ChannelID, 10)
+	if err != nil {
+		log.Printf("StatsClicks: TopReferrers error: %v", err)
+		topReferrers = []repo.NameCount{}
+	}
+	rawUA, err := h.ClickRepo.RawUACounts(start, end, p.TrackerID, p.CampaignID, p.ChannelID)
+	var browsers, oses []repo.NameCount
+	if err != nil {
+		log.Printf("StatsClicks: RawUACounts error: %v", err)
+		browsers, oses = []repo.NameCount{}, []repo.NameCount{}
+	} else {
+		browsers, oses = repo.ParseUADistribution(rawUA, 10)
+	}
+	languages, err := h.ClickRepo.LanguageDistribution(start, end, p.TrackerID, p.CampaignID, p.ChannelID, 10)
+	if err != nil {
+		log.Printf("StatsClicks: LanguageDistribution error: %v", err)
+		languages = []repo.NameCount{}
+	}
+	botDaily, err := h.ClickRepo.BotCountByDay(start, end, p.TrackerID, p.CampaignID, p.ChannelID)
+	if err != nil {
+		log.Printf("StatsClicks: BotCountByDay error: %v", err)
+		botDaily = []repo.DailyCount{}
+	}
+	hourly, err := h.ClickRepo.CountByHour(start, end, p.TrackerID, p.CampaignID, p.ChannelID)
+	if err != nil {
+		log.Printf("StatsClicks: CountByHour error: %v", err)
+		hourly = []repo.HourlyCount{}
+	}
+
+	return map[string]any{
+		"summary": map[string]any{
+			"total":           total,
+			"unique_visitors": uniqueVisitors,
+			"bots":            bots,
+			"bot_rate":        safeDivide(bots, total),
+		},
+		"daily":          daily,
+		"top_trackers":   topTrackers,
+		"top_channels":   topChannels,
+		"top_campaigns":  topCampaigns,
+		"top_referrers":  topReferrers,
+		"browsers":       browsers,
+		"oses":           oses,
+		"languages":      languages,
+		"bot_daily":      botDaily,
+		"hourly":         hourly,
+	}, nil
+}
+
+// admin.stats.events
+func (h *AdminHandlers) StatsEvents(_ context.Context, params json.RawMessage) (any, *RPCError) {
+	if err := h.requireAuth(params); err != nil {
+		return nil, err
+	}
+	var p struct {
+		StartDate string `json:"start_date"`
+		EndDate   string `json:"end_date"`
+		SiteID    string `json:"site_id"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, NewRPCError(ErrCodeInvalidParams, err.Error())
+	}
+	start, err := time.Parse("2006-01-02", p.StartDate)
+	if err != nil {
+		return nil, NewRPCErrorWithMessage(ErrCodeInvalidParams, "invalid start_date, expected YYYY-MM-DD")
+	}
+	end, err := time.Parse("2006-01-02", p.EndDate)
+	if err != nil {
+		return nil, NewRPCErrorWithMessage(ErrCodeInvalidParams, "invalid end_date, expected YYYY-MM-DD")
+	}
+	end = end.Add(24*time.Hour - time.Nanosecond)
+
+	daily, err := h.EventRepo.CountByDay(start, end, p.SiteID)
+	if err != nil {
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
+	}
+	total, uniqueVisitors, uniqueSessions, bots, err := h.EventRepo.Summary(start, end, p.SiteID)
+	if err != nil {
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
+	}
+	topSites, err := h.EventRepo.TopByGroup(start, end, "site_id", 10)
+	if err != nil {
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
+	}
+	topTypes, err := h.EventRepo.TopByGroup(start, end, "type", 10)
+	if err != nil {
+		return nil, NewRPCError(ErrCodeDBError, err.Error())
+	}
+
+	// New aggregations — graceful on failure
+	topReferrers, err := h.EventRepo.TopReferrers(start, end, p.SiteID, 10)
+	if err != nil {
+		log.Printf("StatsEvents: TopReferrers error: %v", err)
+		topReferrers = []repo.NameCount{}
+	}
+	topPages, err := h.EventRepo.TopPages(start, end, p.SiteID, 10)
+	if err != nil {
+		log.Printf("StatsEvents: TopPages error: %v", err)
+		topPages = []repo.NameCount{}
+	}
+	rawUA, err := h.EventRepo.RawUACounts(start, end, p.SiteID)
+	var browsers, oses []repo.NameCount
+	if err != nil {
+		log.Printf("StatsEvents: RawUACounts error: %v", err)
+		browsers, oses = []repo.NameCount{}, []repo.NameCount{}
+	} else {
+		browsers, oses = repo.ParseUADistribution(rawUA, 10)
+	}
+	languages, err := h.EventRepo.LanguageDistribution(start, end, p.SiteID, 10)
+	if err != nil {
+		log.Printf("StatsEvents: LanguageDistribution error: %v", err)
+		languages = []repo.NameCount{}
+	}
+	botDaily, err := h.EventRepo.BotCountByDay(start, end, p.SiteID)
+	if err != nil {
+		log.Printf("StatsEvents: BotCountByDay error: %v", err)
+		botDaily = []repo.DailyCount{}
+	}
+	hourly, err := h.EventRepo.CountByHour(start, end, p.SiteID)
+	if err != nil {
+		log.Printf("StatsEvents: CountByHour error: %v", err)
+		hourly = []repo.HourlyCount{}
+	}
+
+	return map[string]any{
+		"summary": map[string]any{
+			"total":           total,
+			"unique_visitors": uniqueVisitors,
+			"unique_sessions": uniqueSessions,
+			"bots":            bots,
+			"bot_rate":        safeDivide(bots, total),
+		},
+		"daily":          daily,
+		"top_sites":      topSites,
+		"top_types":      topTypes,
+		"top_referrers":  topReferrers,
+		"top_pages":      topPages,
+		"browsers":       browsers,
+		"oses":           oses,
+		"languages":      languages,
+		"bot_daily":      botDaily,
+		"hourly":         hourly,
+	}, nil
 }

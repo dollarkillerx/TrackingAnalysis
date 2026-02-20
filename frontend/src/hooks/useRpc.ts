@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { rpcCall } from '@/lib/rpc-client'
+import i18n from '@/i18n'
 
 export function useRpcCall<TResult>(method: string) {
   const [loading, setLoading] = useState(false)
@@ -13,7 +14,7 @@ export function useRpcCall<TResult>(method: string) {
         const result = await rpcCall<TResult>(method, params)
         return result
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Unknown error'
+        const msg = err instanceof Error ? err.message : i18n.t('common.unknownError')
         setError(msg)
         throw err
       } finally {

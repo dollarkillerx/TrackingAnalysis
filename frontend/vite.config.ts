@@ -11,7 +11,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/rpc': 'http://localhost:8080',
+      '/rpc': 'http://127.0.0.1:8091',
     },
   },
 })

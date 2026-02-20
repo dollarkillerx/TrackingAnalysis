@@ -19,6 +19,7 @@ func Init(dsn string) (*gorm.DB, error) {
 		&models.Site{},
 		&models.Click{},
 		&models.Event{},
+		&models.Token{},
 	)
 	if err != nil {
 		return nil, err

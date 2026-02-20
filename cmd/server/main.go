@@ -83,6 +83,7 @@ func main() {
 	siteRepo := repo.NewSiteRepo(db)
 	clickRepo := repo.NewClickRepo(db)
 	eventRepo := repo.NewEventRepo(db)
+	tokenRepo := repo.NewTokenRepo(db)
 
 	// Set up JSON-RPC dispatcher
 	dispatcher := rpc.NewDispatcher()
@@ -95,6 +96,9 @@ func main() {
 		ChannelRepo:  channelRepo,
 		TargetRepo:   targetRepo,
 		SiteRepo:     siteRepo,
+		TokenRepo:    tokenRepo,
+		ClickRepo:    clickRepo,
+		EventRepo:    eventRepo,
 	}
 	adminHandlers.Register(dispatcher)
 
@@ -106,6 +110,7 @@ func main() {
 		ClickRepo: clickRepo,
 		EventRepo: eventRepo,
 		SiteRepo:  siteRepo,
+		TokenRepo: tokenRepo,
 	}
 	dispatcher.Register("track.collectClick", trackHandlers.CollectClick)
 	dispatcher.Register("track.collectEvents", trackHandlers.CollectEvents)
@@ -115,12 +120,24 @@ func main() {
 		Config:     &cfg,
 		ClickRepo:  clickRepo,
 		TargetRepo: targetRepo,
+		TokenRepo:  tokenRepo,
 		PubKey:     pubKey,
 		PrivKey:    privKey,
+		Redis:      rdb,
+		BotCfg:     &cfg.BotConfiguration,
 	}
 
 	// Set up Gin router
 	r := gin.New()
+
+	// Prioritize CF-Connecting-IP for Cloudflare deployments
+	r.RemoteIPHeaders = []string{"CF-Connecting-IP", "X-Forwarded-For", "X-Real-IP"}
+	if len(cfg.ServiceConfiguration.TrustedProxies) > 0 {
+		r.SetTrustedProxies(cfg.ServiceConfiguration.TrustedProxies)
+	} else {
+		r.SetTrustedProxies(nil)
+	}
+
 	r.Use(gin.Recovery())
 	r.Use(requestIDMiddleware())
 

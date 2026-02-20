@@ -11,8 +11,8 @@ type Click struct {
 	ID           string    `gorm:"type:uuid;primaryKey" json:"id"`
 	TS           time.Time `gorm:"not null;index:idx_clicks_tracker_ts;index:idx_clicks_channel_ts" json:"ts"`
 	TrackerID    string    `gorm:"type:uuid;not null;index:idx_clicks_tracker_ts" json:"tracker_id"`
-	CampaignID   string    `gorm:"type:uuid" json:"campaign_id"`
-	ChannelID    string    `gorm:"type:uuid;index:idx_clicks_channel_ts" json:"channel_id"`
+	CampaignID   string    `gorm:"type:uuid;default:null" json:"campaign_id"`
+	ChannelID    string    `gorm:"type:uuid;default:null;index:idx_clicks_channel_ts" json:"channel_id"`
 	TargetID     string    `gorm:"type:uuid" json:"target_id"`
 	VisitorID    string    `gorm:"type:varchar(255)" json:"visitor_id"`
 	IP           string    `gorm:"type:varchar(45)" json:"ip"`

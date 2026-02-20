@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Skeleton } from './Skeleton'
 import { EmptyState } from './EmptyState'
 
@@ -17,13 +18,15 @@ interface DataTableProps<T> {
   rowKey: (row: T) => string
 }
 
-export function DataTable<T>({ columns, data, loading, emptyMessage = 'No data found', rowKey }: DataTableProps<T>) {
+export function DataTable<T>({ columns, data, loading, emptyMessage, rowKey }: DataTableProps<T>) {
+  const { t } = useTranslation()
+
   if (loading) {
     return <Skeleton rows={5} />
   }
 
   if (data.length === 0) {
-    return <EmptyState title={emptyMessage} />
+    return <EmptyState title={emptyMessage ?? t('common.noDataFound')} />
   }
 
   return (

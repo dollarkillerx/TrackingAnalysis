@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Copy, Check } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { copyToClipboard } from '@/lib/utils'
 
 interface CopyButtonProps {
@@ -8,6 +9,7 @@ interface CopyButtonProps {
 
 export function CopyButton({ text }: CopyButtonProps) {
   const [copied, setCopied] = useState(false)
+  const { t } = useTranslation()
 
   const handleCopy = async () => {
     await copyToClipboard(text)
@@ -19,7 +21,7 @@ export function CopyButton({ text }: CopyButtonProps) {
     <button
       onClick={handleCopy}
       className="rounded p-1 text-muted hover:text-text hover:bg-bg-elevated transition-colors cursor-pointer"
-      title="Copy to clipboard"
+      title={t('common.copyToClipboard')}
     >
       {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
     </button>

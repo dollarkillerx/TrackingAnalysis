@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/AuthContext'
 import { FormField } from '@/components/ui/FormField'
 import { Button } from '@/components/ui/Button'
@@ -8,6 +9,7 @@ import { Crosshair } from 'lucide-react'
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,7 +27,7 @@ export function LoginPage() {
       await login(username, password)
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setError(err instanceof Error ? err.message : t('login.loginFailed'))
     } finally {
       setLoading(false)
     }
@@ -36,26 +38,26 @@ export function LoginPage() {
       <div className="w-full max-w-sm rounded-xl border border-border bg-bg-card p-8 shadow-2xl">
         <div className="mb-8 text-center">
           <Crosshair className="mx-auto mb-3 h-10 w-10 text-primary" />
-          <h1 className="text-xl font-bold font-mono text-text">TrackingAnalysis</h1>
-          <p className="mt-1 text-sm text-muted">Admin Dashboard</p>
+          <h1 className="text-xl font-bold font-mono text-text">{t('login.title')}</h1>
+          <p className="mt-1 text-sm text-muted">{t('login.subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormField
-            label="Username"
+            label={t('login.username')}
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="admin"
+            placeholder={t('login.usernamePlaceholder')}
             required
             autoFocus
           />
           <FormField
-            label="Password"
+            label={t('login.password')}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="********"
+            placeholder={t('login.passwordPlaceholder')}
             required
           />
 
@@ -66,7 +68,7 @@ export function LoginPage() {
           )}
 
           <Button type="submit" className="w-full" loading={loading}>
-            Sign In
+            {t('login.signIn')}
           </Button>
         </form>
       </div>

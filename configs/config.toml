@@ -3,19 +3,20 @@ Port = "8091"
 Debug = false
 ExportURL = "http://localhost:8091"
 LogLevel = "info"
+TrustedProxies = []
 
 [PostgresConfiguration]
-Host = "localhost"
-Port = 5432
-User = "postgres"
-Password = "postgres"
+Host = "127.0.0.1"
+Port = 18432
+User = "pacman"
+Password = "MEB3oZZkpxgA1q4WcA10"
 DBName = "tracking"
 SSLMode = false
 
 [RedisConfiguration]
-Addr = "localhost:6379"
-Password = ""
-Db = 0
+Addr = "127.0.0.1:8879"
+Password = "797Qa8fLHwv38"
+Db = 6
 
 [AdminConfiguration]
 Username = "admin"

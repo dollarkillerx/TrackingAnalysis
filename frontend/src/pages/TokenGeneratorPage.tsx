@@ -1,30 +1,25 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useTrackers } from '@/hooks/useTrackers'
 import { useCampaigns } from '@/hooks/useCampaigns'
 import { useChannels } from '@/hooks/useChannels'
 import { useTargets } from '@/hooks/useTargets'
-import { useRpcCall } from '@/hooks/useRpc'
+import { useTokens } from '@/hooks/useTokens'
 import { useToast } from '@/context/ToastContext'
 import { SelectField } from '@/components/ui/SelectField'
 import { Button } from '@/components/ui/Button'
 import { CopyButton } from '@/components/ui/CopyButton'
-import { RPC } from '@/lib/constants'
 import { Key } from 'lucide-react'
 
-const expiryOptions = [
-  { value: '3600', label: '1 hour' },
-  { value: '86400', label: '24 hours' },
-  { value: '604800', label: '7 days' },
-  { value: '2592000', label: '30 days' },
-  { value: '0', label: 'No expiry' },
-]
-
 export function TokenGeneratorPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
   const { trackers, fetch: fetchTrackers } = useTrackers()
   const { campaigns, fetch: fetchCampaigns } = useCampaigns()
   const { channels, fetch: fetchChannels } = useChannels()
   const { targets, fetch: fetchTargets } = useTargets()
-  const { execute: generateToken, loading } = useRpcCall<{ token: string }>(RPC.TOKEN_GENERATE)
+  const { generate: generateToken, generating } = useTokens()
   const { addToast } = useToast()
 
   const [trackerId, setTrackerId] = useState('')
@@ -32,8 +27,8 @@ export function TokenGeneratorPage() {
   const [channelId, setChannelId] = useState('')
   const [targetId, setTargetId] = useState('')
   const [mode, setMode] = useState('302')
-  const [expSeconds, setExpSeconds] = useState('86400')
-  const [generatedToken, setGeneratedToken] = useState('')
+  const [generatedShortCode, setGeneratedShortCode] = useState('')
+  const [trackingUrl, setTrackingUrl] = useState('')
 
   useEffect(() => { fetchTrackers() }, [fetchTrackers])
 
@@ -67,92 +62,85 @@ export function TokenGeneratorPage() {
         channel_id: channelId,
         target_id: targetId,
         mode,
-        exp_seconds: Number(expSeconds),
       })
-      setGeneratedToken(result.token)
-      addToast('Token generated', 'success')
+      setGeneratedShortCode(result.short_code)
+      setTrackingUrl(result.tracking_url)
+      addToast(t('tokens.tokenGenerated'), 'success')
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'Failed to generate token', 'error')
+      addToast(err instanceof Error ? err.message : t('tokens.failedToGenerate'), 'error')
     }
   }
 
-  const trackingUrl = generatedToken
-    ? `${window.location.origin}/${mode === 'js' ? 't' : 'r'}/${generatedToken}`
-    : ''
-
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold font-mono text-text">Token Generator</h2>
+      <h2 className="mb-6 text-2xl font-bold font-mono text-text">{t('tokens.title')}</h2>
 
       <div className="max-w-xl rounded-xl border border-border bg-bg-card p-6">
         <form onSubmit={handleGenerate} className="space-y-4">
           <SelectField
-            label="Tracker"
+            label={t('common.tracker')}
             value={trackerId}
             onChange={(e) => setTrackerId(e.target.value)}
             options={trackers.map((t) => ({ value: t.id, label: `${t.name} (${t.type})` }))}
-            placeholder="Select tracker"
+            placeholder={t('common.selectTracker')}
             required
           />
           <SelectField
-            label="Campaign"
+            label={t('common.campaign')}
             value={campaignId}
             onChange={(e) => setCampaignId(e.target.value)}
             options={filteredCampaigns.map((c) => ({ value: c.id, label: c.name }))}
-            placeholder="Select campaign"
+            placeholder={t('common.selectCampaign')}
           />
           <SelectField
-            label="Channel"
+            label={t('common.channel')}
             value={channelId}
             onChange={(e) => setChannelId(e.target.value)}
             options={filteredChannels.map((c) => ({ value: c.id, label: c.name }))}
-            placeholder="Select channel"
+            placeholder={t('common.selectChannel')}
           />
           <SelectField
-            label="Target"
+            label={t('common.target')}
             value={targetId}
             onChange={(e) => setTargetId(e.target.value)}
             options={filteredTargets.map((t) => ({ value: t.id, label: t.url }))}
-            placeholder="Select target"
+            placeholder={t('common.selectTarget')}
             required
           />
           <SelectField
-            label="Mode"
+            label={t('tokens.mode')}
             value={mode}
             onChange={(e) => setMode(e.target.value)}
             options={[
-              { value: '302', label: '302 Redirect' },
-              { value: 'js', label: 'JavaScript' },
+              { value: '302', label: t('common.redirect302') },
+              { value: 'js', label: t('common.javascript') },
             ]}
           />
-          <SelectField
-            label="Expiry"
-            value={expSeconds}
-            onChange={(e) => setExpSeconds(e.target.value)}
-            options={expiryOptions}
-          />
 
-          <Button type="submit" loading={loading} className="w-full">
-            <Key className="h-4 w-4" /> Generate Token
+          <Button type="submit" loading={generating} className="w-full">
+            <Key className="h-4 w-4" /> {t('tokens.generateToken')}
           </Button>
         </form>
 
-        {generatedToken && (
+        {generatedShortCode && (
           <div className="mt-6 space-y-3">
             <div>
-              <label className="block text-sm font-medium text-muted mb-1">Token</label>
+              <label className="block text-sm font-medium text-muted mb-1">{t('tokens.shortCode')}</label>
               <div className="flex items-center gap-2 rounded-lg border border-border bg-bg-deep px-4 py-3">
-                <code className="flex-1 font-mono text-xs text-primary break-all">{generatedToken}</code>
-                <CopyButton text={generatedToken} />
+                <code className="flex-1 font-mono text-xs text-primary break-all">{generatedShortCode}</code>
+                <CopyButton text={generatedShortCode} />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-muted mb-1">Tracking URL</label>
+              <label className="block text-sm font-medium text-muted mb-1">{t('tokens.trackingUrl')}</label>
               <div className="flex items-center gap-2 rounded-lg border border-border bg-bg-deep px-4 py-3">
                 <code className="flex-1 font-mono text-xs text-secondary break-all">{trackingUrl}</code>
                 <CopyButton text={trackingUrl} />
               </div>
             </div>
+            <Button variant="ghost" className="w-full" onClick={() => navigate('/tokens')}>
+              {t('tokens.viewAllTokens')}
+            </Button>
           </div>
         )}
       </div>

@@ -19,10 +19,11 @@ type Config struct {
 }
 
 type ServiceConfiguration struct {
-	Port      string `mapstructure:"Port"`
-	Debug     bool   `mapstructure:"Debug"`
-	ExportURL string `mapstructure:"ExportURL"`
-	LogLevel  string `mapstructure:"LogLevel"`
+	Port           string   `mapstructure:"Port"`
+	Debug          bool     `mapstructure:"Debug"`
+	ExportURL      string   `mapstructure:"ExportURL"`
+	LogLevel       string   `mapstructure:"LogLevel"`
+	TrustedProxies []string `mapstructure:"TrustedProxies"`
 }
 
 type PostgresConfiguration struct {

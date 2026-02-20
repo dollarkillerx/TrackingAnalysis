@@ -14,6 +14,10 @@ export const RPC = {
   SITE_CREATE: 'admin.site.create',
   SITE_LIST: 'admin.site.list',
   TOKEN_GENERATE: 'admin.token.generate',
+  TOKEN_LIST: 'admin.token.list',
+  TOKEN_DELETE: 'admin.token.delete',
+  STATS_CLICKS: 'admin.stats.clicks',
+  STATS_EVENTS: 'admin.stats.events',
 } as const
 
 export const TOKEN_KEY = 'admin_token'

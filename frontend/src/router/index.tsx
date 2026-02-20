@@ -8,6 +8,7 @@ import { CampaignsPage } from '@/pages/CampaignsPage'
 import { ChannelsPage } from '@/pages/ChannelsPage'
 import { TargetsPage } from '@/pages/TargetsPage'
 import { SitesPage } from '@/pages/SitesPage'
+import { TokenListPage } from '@/pages/TokenListPage'
 import { TokenGeneratorPage } from '@/pages/TokenGeneratorPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
@@ -30,7 +31,8 @@ export const router = createBrowserRouter([
       { path: 'channels', element: <ChannelsPage /> },
       { path: 'targets', element: <TargetsPage /> },
       { path: 'sites', element: <SitesPage /> },
-      { path: 'tokens', element: <TokenGeneratorPage /> },
+      { path: 'tokens', element: <TokenListPage /> },
+      { path: 'tokens/new', element: <TokenGeneratorPage /> },
     ],
   },
   {

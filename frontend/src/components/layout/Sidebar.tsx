@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard,
   Crosshair,
@@ -7,24 +8,28 @@ import {
   Share2,
   Target,
   Globe,
+  List,
   Key,
   PanelLeftClose,
   PanelLeft,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { classNames } from '@/lib/utils'
 
-const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/trackers', icon: Crosshair, label: 'Trackers' },
-  { to: '/campaigns', icon: Megaphone, label: 'Campaigns' },
-  { to: '/channels', icon: Share2, label: 'Channels' },
-  { to: '/targets', icon: Target, label: 'Targets' },
-  { to: '/sites', icon: Globe, label: 'Sites' },
-  { to: '/tokens', icon: Key, label: 'Token Generator' },
-]
-
 export function Sidebar() {
+  const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768)
+
+  const navItems: { to: string; icon: LucideIcon; label: string }[] = [
+    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/trackers', icon: Crosshair, label: t('nav.trackers') },
+    { to: '/campaigns', icon: Megaphone, label: t('nav.campaigns') },
+    { to: '/channels', icon: Share2, label: t('nav.channels') },
+    { to: '/targets', icon: Target, label: t('nav.targets') },
+    { to: '/sites', icon: Globe, label: t('nav.sites') },
+    { to: '/tokens', icon: List, label: t('nav.tokens') },
+    { to: '/tokens/new', icon: Key, label: t('nav.tokenGenerator') },
+  ]
 
   useEffect(() => {
     const onResize = () => {
@@ -43,7 +48,7 @@ export function Sidebar() {
     >
       <div className="flex h-16 items-center justify-between border-b border-border px-3">
         {!collapsed && (
-          <span className="text-sm font-semibold text-text truncate">TrackingAnalysis</span>
+          <span className="text-sm font-semibold text-text truncate">{t('common.appName')}</span>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
