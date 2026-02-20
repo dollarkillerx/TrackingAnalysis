@@ -92,6 +92,7 @@
     "browsers": "Browsers",
     "operatingSystems": "Operating Systems",
     "languages": "Languages",
+    "countries": "Countries",
     "botTrend": "Bot Trend",
     "hourlyDistribution": "Hourly Distribution",
     "allTrackers": "All Trackers",

@@ -10,19 +10,21 @@ import (
 	"github.com/tracking/analysis/internal/bot"
 	"github.com/tracking/analysis/internal/config"
 	"github.com/tracking/analysis/internal/dedup"
+	"github.com/tracking/analysis/internal/geo"
 	"github.com/tracking/analysis/internal/middleware"
 	"github.com/tracking/analysis/internal/models"
 	"github.com/tracking/analysis/internal/repo"
 )
 
 type TrackHandlers struct {
-	Config    *config.Config
-	Redis     *redis.Client
-	PrivKey   *rsa.PrivateKey
-	ClickRepo *repo.ClickRepo
-	EventRepo *repo.EventRepo
-	SiteRepo  *repo.SiteRepo
-	TokenRepo *repo.TokenRepo
+	Config      *config.Config
+	Redis       *redis.Client
+	PrivKey     *rsa.PrivateKey
+	ClickRepo   *repo.ClickRepo
+	EventRepo   *repo.EventRepo
+	SiteRepo    *repo.SiteRepo
+	TokenRepo   *repo.TokenRepo
+	GeoResolver *geo.Resolver
 }
 
 // track.collectClick
@@ -91,6 +93,7 @@ func (h *TrackHandlers) CollectClick(ctx context.Context, params json.RawMessage
 		TargetID:     tkn.TargetID,
 		VisitorID:    payload.VisitorID,
 		IP:           ip,
+		Country:      h.GeoResolver.Country(ip),
 		UA:           ua,
 		Lang:         lang,
 		Referer:      referer,
@@ -165,6 +168,7 @@ func (h *TrackHandlers) CollectEvents(ctx context.Context, params json.RawMessag
 	}
 
 	// Build events
+	country := h.GeoResolver.Country(ip)
 	events := make([]models.Event, 0, len(payload.Events))
 	now := time.Now()
 	for _, e := range payload.Events {
@@ -178,6 +182,7 @@ func (h *TrackHandlers) CollectEvents(ctx context.Context, params json.RawMessag
 			Title:        e.Title,
 			Referrer:     e.Referrer,
 			IP:           ip,
+			Country:      country,
 			UA:           ua,
 			Lang:         lang,
 			Props:        e.Props,

@@ -88,6 +88,7 @@ export interface ClickStatsResponse {
   browsers: NameCount[]
   oses: NameCount[]
   languages: NameCount[]
+  countries: NameCount[]
   bot_daily: DailyCount[]
   hourly: HourlyCount[]
 }
@@ -102,6 +103,7 @@ export interface EventStatsResponse {
   browsers: NameCount[]
   oses: NameCount[]
   languages: NameCount[]
+  countries: NameCount[]
   bot_daily: DailyCount[]
   hourly: HourlyCount[]
 }

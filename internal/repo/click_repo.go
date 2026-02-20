@@ -151,6 +151,16 @@ func (r *ClickRepo) LanguageDistribution(start, end time.Time, trackerID, campai
 	return results, err
 }
 
+func (r *ClickRepo) CountryDistribution(start, end time.Time, trackerID, campaignID, channelID string, limit int) ([]NameCount, error) {
+	q := r.DB.Model(&models.Click{}).
+		Select("country AS name, COUNT(*) AS count").
+		Where("ts BETWEEN ? AND ? AND is_bot = false AND country != ''", start, end)
+	q = r.clickFilters(q, trackerID, campaignID, channelID)
+	var results []NameCount
+	err := q.Group("country").Order("count DESC").Limit(limit).Find(&results).Error
+	return results, err
+}
+
 func (r *ClickRepo) BotCountByDay(start, end time.Time, trackerID, campaignID, channelID string) ([]DailyCount, error) {
 	q := r.DB.Model(&models.Click{}).
 		Select("DATE(ts) AS date, COUNT(*) AS count").

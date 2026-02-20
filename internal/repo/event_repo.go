@@ -145,6 +145,16 @@ func (r *EventRepo) LanguageDistribution(start, end time.Time, siteID string, li
 	return results, err
 }
 
+func (r *EventRepo) CountryDistribution(start, end time.Time, siteID string, limit int) ([]NameCount, error) {
+	q := r.DB.Model(&models.Event{}).
+		Select("country AS name, COUNT(*) AS count").
+		Where("ts BETWEEN ? AND ? AND is_bot = false AND country != ''", start, end)
+	q = r.eventFilters(q, siteID)
+	var results []NameCount
+	err := q.Group("country").Order("count DESC").Limit(limit).Find(&results).Error
+	return results, err
+}
+
 func (r *EventRepo) BotCountByDay(start, end time.Time, siteID string) ([]DailyCount, error) {
 	q := r.DB.Model(&models.Event{}).
 		Select("DATE(ts) AS date, COUNT(*) AS count").

@@ -18,6 +18,7 @@ type Event struct {
 	Title        string    `gorm:"type:text" json:"title"`
 	Referrer     string    `gorm:"type:text" json:"referrer"`
 	IP           string    `gorm:"type:varchar(45)" json:"ip"`
+	Country      string    `gorm:"type:varchar(2)" json:"country"`
 	UA           string    `gorm:"type:text" json:"ua"`
 	Lang         string    `gorm:"type:varchar(50)" json:"lang"`
 	Props        JSONMap   `gorm:"type:jsonb" json:"props"`

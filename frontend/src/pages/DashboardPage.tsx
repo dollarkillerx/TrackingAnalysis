@@ -110,6 +110,7 @@ export function DashboardPage() {
   const browsers = useMemo(() => mergeNameCounts(clickStats.data?.browsers, eventStats.data?.browsers), [clickStats.data?.browsers, eventStats.data?.browsers])
   const oses = useMemo(() => mergeNameCounts(clickStats.data?.oses, eventStats.data?.oses), [clickStats.data?.oses, eventStats.data?.oses])
   const languages = useMemo(() => mergeNameCounts(clickStats.data?.languages, eventStats.data?.languages), [clickStats.data?.languages, eventStats.data?.languages])
+  const countries = useMemo(() => mergeNameCounts(clickStats.data?.countries, eventStats.data?.countries), [clickStats.data?.countries, eventStats.data?.countries])
   const referrers = useMemo(() => mergeNameCounts(clickStats.data?.top_referrers, eventStats.data?.top_referrers), [clickStats.data?.top_referrers, eventStats.data?.top_referrers])
 
   const trendSeries = useMemo(() => {
@@ -274,11 +275,12 @@ export function DashboardPage() {
         <RankingList title={t('dashboard.topPages')} data={eventStats.data?.top_pages ?? []} />
       </div>
 
-      {/* Distribution pie charts - 3 columns */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 mb-6">
+      {/* Distribution pie charts - 4 columns */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-4 mb-6">
         <MiniPieChart title={t('dashboard.browsers')} data={browsers} />
         <MiniPieChart title={t('dashboard.operatingSystems')} data={oses} />
         <MiniPieChart title={t('dashboard.languages')} data={languages} />
+        <MiniPieChart title={t('dashboard.countries')} data={countries} />
       </div>
 
       {/* Bot trend + Hourly - 2 columns */}

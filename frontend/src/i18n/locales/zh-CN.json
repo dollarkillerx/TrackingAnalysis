@@ -92,6 +92,7 @@
     "browsers": "浏览器",
     "operatingSystems": "操作系统",
     "languages": "语言",
+    "countries": "国家/地区",
     "botTrend": "机器人趋势",
     "hourlyDistribution": "按小时分布",
     "allTrackers": "全部追踪器",

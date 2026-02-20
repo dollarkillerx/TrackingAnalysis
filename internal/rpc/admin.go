@@ -566,6 +566,11 @@ func (h *AdminHandlers) StatsClicks(_ context.Context, params json.RawMessage) (
 		log.Printf("StatsClicks: LanguageDistribution error: %v", err)
 		languages = []repo.NameCount{}
 	}
+	countries, err := h.ClickRepo.CountryDistribution(start, end, p.TrackerID, p.CampaignID, p.ChannelID, 10)
+	if err != nil {
+		log.Printf("StatsClicks: CountryDistribution error: %v", err)
+		countries = []repo.NameCount{}
+	}
 	botDaily, err := h.ClickRepo.BotCountByDay(start, end, p.TrackerID, p.CampaignID, p.ChannelID)
 	if err != nil {
 		log.Printf("StatsClicks: BotCountByDay error: %v", err)
@@ -592,6 +597,7 @@ func (h *AdminHandlers) StatsClicks(_ context.Context, params json.RawMessage) (
 		"browsers":       browsers,
 		"oses":           oses,
 		"languages":      languages,
+		"countries":      countries,
 		"bot_daily":      botDaily,
 		"hourly":         hourly,
 	}, nil
@@ -661,6 +667,11 @@ func (h *AdminHandlers) StatsEvents(_ context.Context, params json.RawMessage) (
 		log.Printf("StatsEvents: LanguageDistribution error: %v", err)
 		languages = []repo.NameCount{}
 	}
+	countries, err := h.EventRepo.CountryDistribution(start, end, p.SiteID, 10)
+	if err != nil {
+		log.Printf("StatsEvents: CountryDistribution error: %v", err)
+		countries = []repo.NameCount{}
+	}
 	botDaily, err := h.EventRepo.BotCountByDay(start, end, p.SiteID)
 	if err != nil {
 		log.Printf("StatsEvents: BotCountByDay error: %v", err)
@@ -688,6 +699,7 @@ func (h *AdminHandlers) StatsEvents(_ context.Context, params json.RawMessage) (
 		"browsers":       browsers,
 		"oses":           oses,
 		"languages":      languages,
+		"countries":      countries,
 		"bot_daily":      botDaily,
 		"hourly":         hourly,
 	}, nil

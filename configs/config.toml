@@ -40,3 +40,7 @@ PerTrackerIPPerMinute = 20
 MarkThreshold = 50
 BlockThreshold = 80
 BlockMode = "reject"
+
+[GeoIPConfiguration]
+DatabasePath = "data/GeoLite2-Country.mmdb"
+DownloadURL = "https://fileoss.hacksnews.top/GeoLite2-Country.mmdb"

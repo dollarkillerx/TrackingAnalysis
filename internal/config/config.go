@@ -16,6 +16,12 @@ type Config struct {
 	SecurityConfiguration  SecurityConfiguration  `mapstructure:"SecurityConfiguration"`
 	RateLimitConfiguration RateLimitConfiguration `mapstructure:"RateLimitConfiguration"`
 	BotConfiguration       BotConfiguration       `mapstructure:"BotConfiguration"`
+	GeoIPConfiguration     GeoIPConfiguration     `mapstructure:"GeoIPConfiguration"`
+}
+
+type GeoIPConfiguration struct {
+	DatabasePath string `mapstructure:"DatabasePath"`
+	DownloadURL  string `mapstructure:"DownloadURL"`
 }
 
 type ServiceConfiguration struct {

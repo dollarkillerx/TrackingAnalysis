@@ -12,6 +12,7 @@ import (
 	"github.com/tracking/analysis/internal/cache"
 	"github.com/tracking/analysis/internal/config"
 	"github.com/tracking/analysis/internal/database"
+	"github.com/tracking/analysis/internal/geo"
 	"github.com/tracking/analysis/internal/handler"
 	"github.com/tracking/analysis/internal/repo"
 	"github.com/tracking/analysis/internal/rpc"
@@ -67,6 +68,19 @@ func main() {
 	}
 	slog.Info("redis connected")
 
+	// Init GeoIP resolver
+	geoResolver, err := geo.NewResolver(cfg.GeoIPConfiguration.DatabasePath, cfg.GeoIPConfiguration.DownloadURL)
+	if err != nil {
+		slog.Error("failed to init GeoIP resolver", "error", err)
+		os.Exit(1)
+	}
+	if geoResolver != nil {
+		slog.Info("GeoIP database loaded", "path", cfg.GeoIPConfiguration.DatabasePath)
+		defer geoResolver.Close()
+	} else {
+		slog.Info("GeoIP disabled (no database path configured)")
+	}
+
 	// Load RSA key pair
 	privKey, pubKey, err := security.LoadKeyPair(cfg.SecurityConfiguration.RSAPrivateKeyPath, cfg.SecurityConfiguration.RSAPublicKeyPath)
 	if err != nil {
@@ -104,27 +118,29 @@ func main() {
 
 	// Register track handlers
 	trackHandlers := &rpc.TrackHandlers{
-		Config:    &cfg,
-		Redis:     rdb,
-		PrivKey:   privKey,
-		ClickRepo: clickRepo,
-		EventRepo: eventRepo,
-		SiteRepo:  siteRepo,
-		TokenRepo: tokenRepo,
+		Config:      &cfg,
+		Redis:       rdb,
+		PrivKey:     privKey,
+		ClickRepo:   clickRepo,
+		EventRepo:   eventRepo,
+		SiteRepo:    siteRepo,
+		TokenRepo:   tokenRepo,
+		GeoResolver: geoResolver,
 	}
 	dispatcher.Register("track.collectClick", trackHandlers.CollectClick)
 	dispatcher.Register("track.collectEvents", trackHandlers.CollectEvents)
 
 	// Set up tracking HTTP handlers
 	trackingHandler := &handler.TrackingHandler{
-		Config:     &cfg,
-		ClickRepo:  clickRepo,
-		TargetRepo: targetRepo,
-		TokenRepo:  tokenRepo,
-		PubKey:     pubKey,
-		PrivKey:    privKey,
-		Redis:      rdb,
-		BotCfg:     &cfg.BotConfiguration,
+		Config:      &cfg,
+		ClickRepo:   clickRepo,
+		TargetRepo:  targetRepo,
+		TokenRepo:   tokenRepo,
+		PubKey:      pubKey,
+		PrivKey:     privKey,
+		Redis:       rdb,
+		BotCfg:      &cfg.BotConfiguration,
+		GeoResolver: geoResolver,
 	}
 
 	// Set up Gin router

@@ -10,6 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/tracking/analysis/internal/bot"
 	"github.com/tracking/analysis/internal/config"
+	"github.com/tracking/analysis/internal/geo"
 	"github.com/tracking/analysis/internal/models"
 	"github.com/tracking/analysis/internal/repo"
 	"github.com/tracking/analysis/internal/sdk"
@@ -17,14 +18,15 @@ import (
 )
 
 type TrackingHandler struct {
-	Config     *config.Config
-	ClickRepo  *repo.ClickRepo
-	TargetRepo *repo.TargetRepo
-	TokenRepo  *repo.TokenRepo
-	PubKey     *rsa.PublicKey
-	PrivKey    *rsa.PrivateKey
-	Redis      *redis.Client
-	BotCfg     *config.BotConfiguration
+	Config      *config.Config
+	ClickRepo   *repo.ClickRepo
+	TargetRepo  *repo.TargetRepo
+	TokenRepo   *repo.TokenRepo
+	PubKey      *rsa.PublicKey
+	PrivKey     *rsa.PrivateKey
+	Redis       *redis.Client
+	BotCfg      *config.BotConfiguration
+	GeoResolver *geo.Resolver
 }
 
 // GET /t/:token — JS-based click tracking page
@@ -85,6 +87,7 @@ func (h *TrackingHandler) HandleRedirectTrack(c *gin.Context) {
 		TrackerID:    tkn.TrackerID,
 		TargetID:     tkn.TargetID,
 		IP:           c.ClientIP(),
+		Country:      h.GeoResolver.Country(c.ClientIP()),
 		UA:           ua,
 		Lang:         lang,
 		Referer:      referer,

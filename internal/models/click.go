@@ -16,6 +16,7 @@ type Click struct {
 	TargetID     string    `gorm:"type:uuid" json:"target_id"`
 	VisitorID    string    `gorm:"type:varchar(255)" json:"visitor_id"`
 	IP           string    `gorm:"type:varchar(45)" json:"ip"`
+	Country      string    `gorm:"type:varchar(2)" json:"country"`
 	UA           string    `gorm:"type:text" json:"ua"`
 	Lang         string    `gorm:"type:varchar(50)" json:"lang"`
 	Referer      string    `gorm:"type:text" json:"referer"`
