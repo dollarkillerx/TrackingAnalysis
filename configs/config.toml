@@ -1,0 +1,41 @@
+[ServiceConfiguration]
+Port = "8080"
+Debug = false
+ExportURL = "http://localhost:8080"
+LogLevel = "info"
+
+[PostgresConfiguration]
+Host = "localhost"
+Port = 5432
+User = "postgres"
+Password = "postgres"
+DBName = "tracking"
+SSLMode = false
+
+[RedisConfiguration]
+Addr = "localhost:6379"
+Password = ""
+Db = 0
+
+[AdminConfiguration]
+Username = "admin"
+Password = "changeme"
+
+[SecurityConfiguration]
+TokenSecret = "change-this-to-a-random-secret-key"
+TSWindowSeconds = 300
+NonceTTLSeconds = 600
+DedupSeconds = 10
+RSAPrivateKeyPemPath = "keys/private.pem"
+RSAPublicKeyPemPath = "keys/public.pem"
+KID = "key-1"
+
+[RateLimitConfiguration]
+PerIPPerMinute = 60
+PerIPUAPerMinute = 30
+PerTrackerIPPerMinute = 20
+
+[BotConfiguration]
+MarkThreshold = 50
+BlockThreshold = 80
+BlockMode = "reject"
