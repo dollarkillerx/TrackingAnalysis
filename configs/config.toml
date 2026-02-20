@@ -1,7 +1,7 @@
 [ServiceConfiguration]
-Port = "8080"
+Port = "8091"
 Debug = false
-ExportURL = "http://localhost:8080"
+ExportURL = "http://localhost:8091"
 LogLevel = "info"
 
 [PostgresConfiguration]
