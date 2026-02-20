@@ -1,7 +1,7 @@
 [ServiceConfiguration]
 Port = "8091"
 Debug = false
-ExportURL = "http://localhost:8091"
+ExportURL = "https://asn.siliconnexus.cc"
 LogLevel = "info"
 TrustedProxies = []
 
@@ -20,10 +20,10 @@ Db = 6
 
 [AdminConfiguration]
 Username = "admin"
-Password = "changeme"
+Password = "3e967990"
 
 [SecurityConfiguration]
-TokenSecret = "change-this-to-a-random-secret-key"
+TokenSecret = "3e967990-9710-484b-bec7-9d8aca447cdd"
 TSWindowSeconds = 300
 NonceTTLSeconds = 600
 DedupSeconds = 10

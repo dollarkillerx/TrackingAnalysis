@@ -25,7 +25,7 @@ export async function rpcCall<T>(
     params = { ...params, admin_token: token }
   }
 
-  const res = await fetch('/rpc', {
+  const res = await fetch('https://asn.siliconnexus.cc/rpc', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
